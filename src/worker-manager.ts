@@ -1,4 +1,5 @@
 import { Inject, Logger } from '@nestjs/common';
+import { resolve } from 'path';
 import { Worker } from 'worker_threads';
 
 import { commonConfig, CommonConfigType } from './common/config';
@@ -24,10 +25,14 @@ export class WorkerManager {
 
     for (let i = 0; i < this.appCommonConfig.workerCount; i += 1) {
       /**
-       * TODO(qhung312): Find a way to not hardcode this path, as it can only be
-       * run by `yarn build` -> `node dist/main.js` right now.
+       * If we're running via ts-jest, the worker file will be in a different
+       * location than when we compile via Webpack. This is a workaround for it
        */
-      const worker = new Worker('./dist/workers/worker.js');
+      const filename =
+        process.env.JEST_WORKER_ID !== undefined
+          ? resolve(__dirname, './workers/worker.ts')
+          : resolve(__dirname, './worker.js');
+      const worker = new Worker(filename);
       this.infos.push({ worker, isBusy: false });
     }
 
