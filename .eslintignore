@@ -1,2 +1,3 @@
 commitlint.config.js
+webpack.config.js
 src/common/database/migrations
