@@ -2,7 +2,7 @@
   "name": "media-server",
   "version": "0.0.1",
   "description": "",
-  "author": "",
+  "author": "Quoc Hung <truongquochung312@gmail.com>",
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
