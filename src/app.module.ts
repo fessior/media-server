@@ -1,7 +1,9 @@
+import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 
-import { commonConfig } from './common/config';
+import { commonConfig, CommonConfigType } from './common/config';
+import { QueueModule } from './queues/queue.module';
 import { WorkerManager } from './worker-manager';
 
 /**
@@ -14,6 +16,16 @@ import { WorkerManager } from './worker-manager';
       cache: true,
       load: [commonConfig],
     }),
+    BullModule.forRootAsync({
+      useFactory: (appCommonConfig: CommonConfigType) => ({
+        connection: {
+          host: appCommonConfig.redisHost,
+          port: appCommonConfig.redisPort,
+        },
+      }),
+      inject: [commonConfig.KEY],
+    }),
+    QueueModule,
   ],
   providers: [WorkerManager],
 })
