@@ -1,8 +1,10 @@
 import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { APP_GUARD } from '@nestjs/core';
 
 import { commonConfig, CommonConfigType } from './common/config';
+import { LocalRouteGuard } from './common/local-route/guards';
 import { QueueModule } from './queues/queue.module';
 import { WorkerManager } from './worker-manager';
 
@@ -27,6 +29,6 @@ import { WorkerManager } from './worker-manager';
     }),
     QueueModule,
   ],
-  providers: [WorkerManager],
+  providers: [WorkerManager, { provide: APP_GUARD, useClass: LocalRouteGuard }],
 })
 export class AppModule {}
