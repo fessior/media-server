@@ -1,11 +1,20 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
 
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
+import { commonConfig } from './common/config';
+import { WorkerManager } from './worker-manager';
 
+/**
+ * Module for main server
+ */
 @Module({
-  imports: [],
-  controllers: [AppController],
-  providers: [AppService],
+  imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+      cache: true,
+      load: [commonConfig],
+    }),
+  ],
+  providers: [WorkerManager],
 })
 export class AppModule {}

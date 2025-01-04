@@ -27,7 +27,7 @@
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "newLine": "lf",
-    "typeRoots": ["typings", "node_modules/@types"]
+    "typeRoots": ["src/typings", "node_modules/@types"]
   },
   "include": ["src", "test"],
   "exclude": ["node_modules"]
