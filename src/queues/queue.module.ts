@@ -1,14 +1,13 @@
-import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
 
-import { QueueName } from './constants';
+import { BullQueues, QueueName } from './constants';
+import { VideoController } from './controllers/video.controller';
 
 /**
- * Small module which takes care of initializing queues
+ * Takes care of setting up and subscribing to queues
  */
 @Module({
-  imports: [
-    ...Object.values(QueueName).map(name => BullModule.registerQueue({ name })),
-  ],
+  imports: [BullQueues[QueueName.PROCESS_VIDEO]],
+  controllers: [VideoController],
 })
 export class QueueModule {}

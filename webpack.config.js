@@ -58,5 +58,6 @@ module.exports = {
   ],
   optimization: {
     usedExports: true,
+    nodeEnv: false,
   },
 };

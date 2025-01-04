@@ -24,6 +24,7 @@ export class LocalRouteGuard implements CanActivate {
       CustomDecoratorKey.LOCAL_ROUTE,
       context.getHandler(),
     );
+    console.log(this.appCommonConfig.nodeEnv);
 
     return !hasLocalRouteDecorator || this.appCommonConfig.nodeEnv === 'local';
   }
