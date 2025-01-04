@@ -1,7 +1,8 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 
-import { commonConfig } from './common/config/common.config';
+import { commonConfig } from './common/config';
+import { WorkerManager } from './worker-manager';
 
 /**
  * Module for main server
@@ -14,5 +15,6 @@ import { commonConfig } from './common/config/common.config';
       load: [commonConfig],
     }),
   ],
+  providers: [WorkerManager],
 })
 export class AppModule {}

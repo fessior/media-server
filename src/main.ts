@@ -1,15 +1,15 @@
 import { Logger } from '@nestjs/common';
+import { NestFactory } from '@nestjs/core';
 
-import { bootstrapMainServer } from './app';
+import { AppModule } from './app.module';
 import { commonConfig, CommonConfigType } from './common/config/common.config';
 
-const logger = new Logger('Application Bootstrap');
+const logger = new Logger('Bootstrap');
 
 async function startApplication(): Promise<void> {
-  const app = await bootstrapMainServer();
-  const port: number = app.get<CommonConfigType>(
-    commonConfig.KEY,
-  ).mainServerPort;
+  const app = await NestFactory.create(AppModule);
+  const appCommonConfig = app.get<CommonConfigType>(commonConfig.KEY);
+  const { mainServerPort: port } = appCommonConfig;
 
   logger.log(`Attempting to start main server on port ${port}`);
 
