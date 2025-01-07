@@ -22,6 +22,11 @@ type CommonConfig = {
    */
   redisHost: string;
   redisPort: number;
+
+  /**
+   * Workspace for processing media files
+   */
+  mediaWorkdir: string;
 };
 
 export const commonConfig = registerAs('common', () => {
@@ -31,6 +36,7 @@ export const commonConfig = registerAs('common', () => {
     workerCount: parseInt(<string>process.env.WORKER_COUNT, 10) || 5,
     redisHost: process.env.REDIS_HOST || 'localhost',
     redisPort: parseInt(<string>process.env.REDIS_PORT, 10) || 6379,
+    mediaWorkdir: <string>process.env.MEDIA_WORKDIR,
   };
 
   const validationSchema = z.object({
@@ -39,6 +45,7 @@ export const commonConfig = registerAs('common', () => {
     workerCount: z.number().int().positive(),
     redisHost: z.string(),
     redisPort: z.number().int().positive(),
+    mediaWorkdir: z.string(),
   });
 
   validationSchema.parse(configValues);
