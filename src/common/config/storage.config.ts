@@ -1,46 +1,59 @@
 import { Logger } from '@nestjs/common';
-import { registerAs } from '@nestjs/config';
+import { ConfigType, registerAs } from '@nestjs/config';
 import { z } from 'zod';
+
+import { hasUndefinedField } from '../misc';
 
 const logger = new Logger('Storage Config');
 
 type StorageConfig = {
   /**
-   * VNG Cloud VStorage-related configuration, including:
-   * - `vStorageClientId`: Client ID for VStorage service accoun
-   * - `vStorageClientSecret`: Client secret for VStorage service account
+   * Support for MinIO-based storage
    */
-  vstorage: {
-    vStorageClientId?: string;
-    vStorageClientSecret?: string;
+  minio: {
+    endpoint?: string;
+    port?: number;
+    useSSL?: boolean;
+    accessKey?: string;
+    secretKey?: string;
   };
 };
 
 export const storageConfig = registerAs('storage', () => {
   const configValues: StorageConfig = {
-    vstorage: {
-      vStorageClientId: process.env.VSTORAGE_CLIENT_ID,
-      vStorageClientSecret: process.env.VSTORAGE_CLIENT_SECRET,
+    minio: {
+      endpoint: process.env.MINIO_ENDPOINT,
+      port: parseInt(<string>process.env.MINIO_PORT, 10),
+      useSSL: process.env.MINIO_USE_SSL
+        ? process.env.MINIO_USE_SSL === 'true'
+        : undefined,
+      accessKey: process.env.MINIO_ACCESS_KEY,
+      secretKey: process.env.MINIO_SECRET_KEY,
     },
   };
 
   const validationSchema = z.object({
-    vstorage: z.object({
-      vStorageClientId: z.string().optional(),
-      vStorageClientSecret: z.string().optional(),
+    minio: z.object({
+      endpoint: z.string().nonempty().optional(),
+      port: z.number().int().positive().optional(),
+      useSSL: z.boolean().optional(),
+      accessKey: z.string().nonempty().optional(),
+      secretKey: z.string().nonempty().optional(),
     }),
   });
+
+  validationSchema.parse(configValues);
 
   /**
    * Warning logs for potentially missing configuration
    */
-  if (Object.values(configValues.vstorage).length === 0) {
+  if (hasUndefinedField(configValues.minio)) {
     logger.warn(
-      'No VStorage configuration found. This may result in errors when interacting with VStorage',
+      'Missing MinIO configuration. This may result in errors when interacting with MinIO',
     );
   }
 
-  validationSchema.parse(configValues);
-
   return configValues;
 });
+
+export type StorageConfigType = ConfigType<typeof storageConfig>;
