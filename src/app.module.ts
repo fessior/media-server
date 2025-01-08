@@ -7,7 +7,6 @@ import { LocalRouteGuard } from './common/local-route/guards';
 import { BullQueues, QueueName } from './queues/constants';
 import { QueueModule } from './queues/queue.module';
 import { StorageModule } from './storage/storage.module';
-import { WorkerManager } from './worker-manager';
 
 /**
  * Module for main server
@@ -23,6 +22,6 @@ import { WorkerManager } from './worker-manager';
     StorageModule,
     BullQueues[QueueName.PROCESS_VIDEO],
   ],
-  providers: [WorkerManager, { provide: APP_GUARD, useClass: LocalRouteGuard }],
+  providers: [{ provide: APP_GUARD, useClass: LocalRouteGuard }],
 })
 export class AppModule {}
