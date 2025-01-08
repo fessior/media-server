@@ -34,7 +34,6 @@ module.exports = {
   target: 'node',
   entry: {
     main: './src/main.ts',
-    worker: './src/workers/worker.ts',
   },
   output: {
     filename: '[name].js',

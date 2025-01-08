@@ -6,39 +6,35 @@ export type NodeEnv = 'local' | 'development' | 'production';
 type CommonConfig = {
   nodeEnv: NodeEnv;
 
-  /**
-   * Port that the main server listens on. Workers only receive requests from
-   * the main server through message passing, so it's irrelevant to them
-   */
   mainServerPort: number;
-
-  /**
-   * Number of workers to spawn. All workers are spawned at once on server start
-   */
-  workerCount: number;
 
   /**
    * Redis connection details
    */
   redisHost: string;
   redisPort: number;
+
+  /**
+   * Workspace for processing media files
+   */
+  mediaWorkdir: string;
 };
 
 export const commonConfig = registerAs('common', () => {
   const configValues: CommonConfig = {
     nodeEnv: <NodeEnv>process.env.NODE_ENV,
     mainServerPort: parseInt(<string>process.env.PORT, 10) || 3000,
-    workerCount: parseInt(<string>process.env.WORKER_COUNT, 10) || 5,
     redisHost: process.env.REDIS_HOST || 'localhost',
     redisPort: parseInt(<string>process.env.REDIS_PORT, 10) || 6379,
+    mediaWorkdir: <string>process.env.MEDIA_WORKDIR,
   };
 
   const validationSchema = z.object({
     nodeEnv: z.enum(['local', 'development', 'production']),
     mainServerPort: z.number().int().positive(),
-    workerCount: z.number().int().positive(),
     redisHost: z.string(),
     redisPort: z.number().int().positive(),
+    mediaWorkdir: z.string(),
   });
 
   validationSchema.parse(configValues);

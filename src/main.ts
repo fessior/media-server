@@ -1,5 +1,6 @@
 import { Logger, VersioningType } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import { existsSync, mkdirSync } from 'fs';
 
 import { AppModule } from './app.module';
 import { commonConfig, CommonConfigType } from './common/config/common.config';
@@ -19,6 +20,12 @@ async function startApplication(): Promise<void> {
   await app.listen(port);
 
   logger.log(`Main server started successfully`);
+
+  /* Create workdir for workers */
+  if (!existsSync(appCommonConfig.mediaWorkdir)) {
+    logger.log(`Creating workdir at ${appCommonConfig.mediaWorkdir}`);
+    mkdirSync(appCommonConfig.mediaWorkdir);
+  }
 }
 
 startApplication()
