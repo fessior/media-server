@@ -1,4 +1,4 @@
-import { readFileSync, unlinkSync } from 'fs';
+import { readFile, unlink } from 'fs/promises';
 import { basename } from 'path';
 import { Writable, WritableOptions } from 'stream';
 
@@ -23,12 +23,12 @@ export class VideoSegmentUploadStream extends Writable {
   ): Promise<void> {
     try {
       const { fileName } = chunk;
-      const file = readFileSync(fileName);
+      const file = await readFile(fileName);
       const uploadName = `${this.folderName}/${basename(fileName)}`;
       await this.upload(uploadName, file);
 
       /* Remove the file to save space */
-      unlinkSync(fileName);
+      await unlink(fileName);
       callback();
     } catch (error) {
       // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
