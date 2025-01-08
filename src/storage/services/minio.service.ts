@@ -37,4 +37,27 @@ export class MinioService {
     }
     return this.minioClient.putObject(bucketName, objectName, file);
   }
+
+  public async objectExists(
+    bucketName: string,
+    objectName: string,
+  ): Promise<boolean> {
+    if (!this.minioClient) {
+      throw new InternalServerErrorException('Minio client not initialized');
+    }
+    try {
+      await this.minioClient.statObject(bucketName, objectName);
+      return true;
+      // eslint-disable-next-line sonarjs/no-ignored-exceptions
+    } catch (error) {
+      return false;
+    }
+  }
+
+  public async bucketExists(bucketName: string): Promise<boolean> {
+    if (!this.minioClient) {
+      throw new InternalServerErrorException('Minio client not initialized');
+    }
+    return this.minioClient.bucketExists(bucketName);
+  }
 }
