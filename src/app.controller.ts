@@ -15,6 +15,8 @@ export class AppController {
   @Post()
   async test(): Promise<void> {
     await this.videoQueue.add('hello', {
+      messageId: '1',
+      responseQueue: 'response',
       originalVideo: {
         storage: 'minio',
         bucket: 'english-teaching-raw-videos',
@@ -23,7 +25,7 @@ export class AppController {
       outputVideo: {
         storage: 'minio',
         bucket: 'english-teaching-processed-videos',
-        prefix: 'third-english-video',
+        prefix: 'fifth-english-video',
       },
     });
   }

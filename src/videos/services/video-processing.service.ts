@@ -172,6 +172,6 @@ export class VideoProcessingService {
       '-master_pl_name master-playlist.m3u8',
     ]);
 
-    return ffmpegStream.save(`${workspace}/segment-%v.m3u8`);
+    return ffmpegStream.save(`${workspace}/%v.m3u8`);
   }
 }
