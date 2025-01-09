@@ -3,7 +3,7 @@ import { DefaultJobOptions } from 'bullmq';
 
 import { commonConfig, CommonConfigType } from '@/common/config';
 
-export const QueueName = <const>{
+export const QueueName = {
   PROCESS_VIDEO: 'process_video',
 };
 
