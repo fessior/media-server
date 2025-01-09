@@ -9,7 +9,11 @@ import {
   VideoProcessingResponse,
 } from '../types';
 import { QueueName } from '@/common/bullmq/constants';
-import { cleanWorkspace, prepareWorkspace } from '@/common/bullmq/utils';
+import {
+  cleanWorkspace,
+  isReservedQueueName,
+  prepareWorkspace,
+} from '@/common/bullmq/utils';
 import {
   commonConfig,
   CommonConfigType,
@@ -39,11 +43,18 @@ export class VideoProcessor extends WorkerHost {
   @OnWorkerEvent('failed')
   async onFailed(job: Job<VideoProcessingJob>, error: Error): Promise<void> {
     const responseQueue = this.getResponseQueue(job.data.responseQueue);
-    await responseQueue.add('completed', {
-      correlationId: job.data.messageId,
-      status: 'failed',
-      failedReason: error.message,
-    });
+    /**
+     * A job can specify a reserved queue as response queue, which will fail.
+     * In that case, we want to skip sending response, since that would mean
+     * sending to reserved queue.
+     */
+    if (!isReservedQueueName(job.data.responseQueue)) {
+      await responseQueue.add('completed', {
+        correlationId: job.data.messageId,
+        status: 'failed',
+        failedReason: error.message,
+      });
+    }
   }
 
   override async process(job: Job<VideoProcessingJob>): Promise<void> {
@@ -62,7 +73,7 @@ export class VideoProcessor extends WorkerHost {
       await videoProcessingJobSchema.parseAsync(job.data);
 
       /* Response queue should be different from request queues */
-      if (Object.values(QueueName).includes(job.data.responseQueue)) {
+      if (isReservedQueueName(job.data.responseQueue)) {
         throw new Error('Response queue cannot be same as request queue');
       }
 
@@ -82,7 +93,7 @@ export class VideoProcessor extends WorkerHost {
       throw error;
     } finally {
       if (workspace) {
-        this.logger.debug(`Cleaning up workspace ${workspace}`);
+        this.logger.log(`Cleaning up workspace ${workspace}`);
         cleanWorkspace(workspace);
       }
     }
