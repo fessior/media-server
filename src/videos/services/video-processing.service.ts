@@ -151,7 +151,6 @@ export class VideoProcessingService {
     );
 
     /* Give name to each variant */
-    // -var_stream_map "v:0,a:0,name:360p v:1,a:1,name:480p v:2,a:2,name:720p"
     const varStreamMap = variants
       .map(
         ({ height: variantHeight }, index) =>
@@ -171,6 +170,11 @@ export class VideoProcessingService {
       '-hls_flags independent_segments',
       '-master_pl_name master-playlist.m3u8',
     ]);
+
+    /* Chain error handling in case ffmpeg exits */
+    ffmpegStream.on('error', error => {
+      this.logger.error(`FFmpeg error: ${error.message}`);
+    });
 
     return ffmpegStream.save(`${workspace}/%v.m3u8`);
   }

@@ -55,7 +55,10 @@ export class VideoProcessor extends WorkerHost {
 
     try {
       this.logger.log(`Processing video job ${jobId}`);
-      workspace = prepareWorkspace(this.appCommonConfig.mediaWorkdir, jobId);
+      workspace = prepareWorkspace(
+        this.appCommonConfig.mediaWorkdir,
+        `${QueueName.PROCESS_VIDEO}-${jobId}`,
+      );
       await videoProcessingJobSchema.parseAsync(job.data);
 
       /* Response queue should be different from request queues */
@@ -79,6 +82,7 @@ export class VideoProcessor extends WorkerHost {
       throw error;
     } finally {
       if (workspace) {
+        this.logger.debug(`Cleaning up workspace ${workspace}`);
         cleanWorkspace(workspace);
       }
     }
