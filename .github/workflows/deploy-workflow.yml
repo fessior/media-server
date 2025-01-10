@@ -80,16 +80,12 @@ jobs:
           script: |
             source ~/.nvm/nvm.sh
             cd ${{ inputs.project_path }}
-            git reset --hard HEAD
-            git pull
-            yarn install
 
             # Check if PM2 is already running the app
             pm2 describe ${{ inputs.project_name }} > /dev/null 2>&1
             RUNNING=$?
 
             if [ "${RUNNING}" -ne 0 ]; then
-                # Start new
               pm2 start dist/main.js --name ${{ inputs.project_name }} -i 1
             else
               pm2 reload ${{ inputs.project_name }} --wait-ready --listen-timeout ${{ inputs.listen_timeout }} --update-env
