@@ -1,0 +1,100 @@
+name: Deploy workflow
+
+on:
+  workflow_call:
+    inputs:
+      project_name:
+        description: 'Name of project in PM2'
+        required: true
+        type: string
+      listen_timeout:
+        description: 'Maximum time that PM2 should wait for the app to be ready'
+        required: true
+        type: string
+      ssh_port:
+        description: 'SSH port'
+        required: true
+        type: string
+      server_user:
+        description: 'Username to SSH into server'
+        required: true
+        type: string
+      server_ip:
+        description: 'IP address of server'
+        required: true
+        type: string
+      project_path:
+        description: 'Path to project on server'
+        required: true
+        type: string
+
+    secrets:
+      ssh_private_key:
+        description: 'SSH private key'
+        required: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install tools
+        run: |
+          sudo apt-get update
+          # TODO: Install any tools that are required for the deployment process
+
+      - name: Setup Node environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'yarn'
+
+      - name: Install dependencies
+        run: yarn install
+
+      - name: Build app
+        run: yarn build:prod
+
+      - name: Copy build to server
+        uses: burnett01/rsync-deployments@6.0.0
+        with:
+          switches: -zr --delete
+          path: dist/
+          remote_path: ${{ inputs.project_path }}/dist/
+          remote_host: ${{ inputs.server_ip }}
+          remote_port: ${{ inputs.ssh_port }}
+          remote_user: ${{ inputs.server_user }}
+          remote_key: ${{ secrets.ssh_private_key }}
+
+      - name: Start application
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ inputs.server_ip }}
+          username: ${{ inputs.server_user }}
+          key: ${{ secrets.ssh_private_key }}
+          port: ${{ inputs.ssh_port }}
+          script: |
+            source ~/.nvm/nvm.sh
+            cd ${{ inputs.project_path }}
+            git reset --hard HEAD
+            git pull
+            yarn install
+
+            # Check if PM2 is already running the app
+            pm2 describe ${{ inputs.project_name }} > /dev/null 2>&1
+            RUNNING=$?
+
+            if [ "${RUNNING}" -ne 0 ]; then
+                # Start new
+              pm2 start dist/main.js --name ${{ inputs.project_name }} -i 1
+            else
+              pm2 reload ${{ inputs.project_name }} --wait-ready --listen-timeout ${{ inputs.listen_timeout }} --update-env
+            fi
+
+      - name: Cleanup
+        run: |
+          rm -rf ~/.ssh

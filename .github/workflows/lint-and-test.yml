@@ -1,0 +1,42 @@
+name: Lint code
+on: workflow_call
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'yarn'
+
+      - name: Install dependencies
+        run: yarn --frozen-lockfile
+
+      - name: Lint code
+        run: yarn eslint src/**/*.ts --output-file eslint-report.json --format json
+
+      # - name: Lint report
+      #   uses: ataylorme/eslint-annotate-action@v3
+      #   with:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #     report-json: './eslint-report.json'
+
+      # - name: Run tests
+      #   run: yarn test:cov --ci --json --testLocationInResults --outputFile="coverage/report.json"
+
+      # - name: Report coverage
+      #   uses: ArtiomTr/jest-coverage-report-action@v2
+      #   if: success() || failure()
+      #   with:
+      #     package-manager: yarn
+      #     github-token: ${{ secrets.GITHUB_TOKEN }}
+      #     coverage-file: ./coverage/report.json
+      #     base-coverage-file: ./coverage/report.json
+      #     annotations: none

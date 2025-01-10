@@ -12,6 +12,7 @@ async function startApplication(): Promise<void> {
   app.enableVersioning({
     type: VersioningType.URI,
   });
+
   const appCommonConfig = app.get<CommonConfigType>(commonConfig.KEY);
   const { mainServerPort: port } = appCommonConfig;
 
@@ -25,6 +26,11 @@ async function startApplication(): Promise<void> {
   if (!existsSync(appCommonConfig.mediaWorkdir)) {
     logger.log(`Creating workdir at ${appCommonConfig.mediaWorkdir}`);
     mkdirSync(appCommonConfig.mediaWorkdir);
+  }
+
+  /* Notify deployment platform that we're ready */
+  if (process.send) {
+    process.send('ready');
   }
 }
 
