@@ -27,6 +27,11 @@ async function startApplication(): Promise<void> {
     logger.log(`Creating workdir at ${appCommonConfig.mediaWorkdir}`);
     mkdirSync(appCommonConfig.mediaWorkdir);
   }
+
+  /* Notify deployment platform that we're ready */
+  if (process.send) {
+    process.send('ready');
+  }
 }
 
 startApplication()
