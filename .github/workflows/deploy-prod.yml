@@ -1,0 +1,16 @@
+name: Deploy to Production
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy-prod:
+    uses: ./.github/workflows/deploy-workflow.yml
+    with:
+      project_name: ${{ vars.PROJECT_NAME_PROD }}
+      listen_timeout: ${{ vars.LISTEN_TIMEOUT_PROD }}
+      ssh_port: ${{ vars.SSH_PORT_PROD }}
+      server_user: ${{ vars.SERVER_USER_PROD }}
+      server_ip: ${{ vars.SERVER_IP_PROD }}
+      project_path: ${{ vars.PROJECT_PATH_PROD }}
+    secrets:
+      ssh_private_key: ${{ secrets.SSH_PRIVATE_KEY }}
