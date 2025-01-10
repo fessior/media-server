@@ -12,6 +12,7 @@ async function startApplication(): Promise<void> {
   app.enableVersioning({
     type: VersioningType.URI,
   });
+
   const appCommonConfig = app.get<CommonConfigType>(commonConfig.KEY);
   const { mainServerPort: port } = appCommonConfig;
 
