@@ -159,7 +159,7 @@ export class VideoProcessingService {
         const videoBitrate =
           parseInt(fps!, 10) > fpsThreshold ? fps60Bitrate : fps30Bitrate;
         ffmpegStream.addOptions([
-          `-filter:v:${index} scale="w=ceil(oh*a/2)*2:h=${variantHeight}"`,
+          `-filter:v:${index} scale="w=ceil(oh*a/2)*2":h=${variantHeight}`,
           `-b:v:${index} ${videoBitrate}`,
           `-b:a:${index} ${audioBitrate}`,
         ]);
