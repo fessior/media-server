@@ -2,7 +2,6 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { ffprobe, FfprobeData } from 'fluent-ffmpeg';
 import * as ffmpeg from 'fluent-ffmpeg';
-import { Readable } from 'stream';
 import { pipeline } from 'stream/promises';
 
 import { HLS_RESOLUTIONS } from '../constants';
@@ -57,11 +56,11 @@ export class VideoProcessingService {
       originalVideo.bucket,
       originalVideo.key,
     );
-    const readStream = await this.minioService.getObjectReadStream(
+    const videoUrl = await this.minioService.getPresignedDownloadUrl(
       originalVideo.bucket,
       originalVideo.key,
     );
-    const ffmpegProc = this.buildFfmpegStream(readStream, metadata, workspace);
+    const ffmpegProc = this.buildFfmpegStream(videoUrl, metadata, workspace);
 
     this.logger.debug(
       // eslint-disable-next-line no-underscore-dangle
@@ -124,7 +123,7 @@ export class VideoProcessingService {
   }
 
   private buildFfmpegStream(
-    videoStream: Readable,
+    videoUrl: string,
     metadata: FfprobeData,
     workspace: string,
   ): ffmpeg.FfmpegCommand {
@@ -135,7 +134,7 @@ export class VideoProcessingService {
       ({ height: variantHeight }) => variantHeight <= height!,
     );
 
-    const ffmpegStream = ffmpeg(videoStream);
+    const ffmpegStream = ffmpeg(videoUrl);
 
     /* Map video and audio streams */
     variants.forEach(() =>

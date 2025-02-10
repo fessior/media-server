@@ -60,4 +60,15 @@ export class MinioService {
     }
     return this.minioClient.bucketExists(bucketName);
   }
+
+  public async getPresignedDownloadUrl(
+    bucket: string,
+    key: string,
+  ): Promise<string> {
+    if (!this.minioClient) {
+      throw new InternalServerErrorException('Minio client not initialized');
+    }
+    /* Default expiry should be good enough for most use cases */
+    return this.minioClient.presignedGetObject(bucket, key);
+  }
 }
