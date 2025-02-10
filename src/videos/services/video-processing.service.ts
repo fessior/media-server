@@ -14,11 +14,6 @@ import { MinioService } from '@/storage/services';
 export class VideoProcessingService {
   private readonly logger: Logger = new Logger(VideoProcessingService.name);
 
-  /**
-   * Number of video files that can be buffered on disk, waiting to be uploaded
-   */
-  private readonly highWaterMark: number = 25;
-
   constructor(
     private minioService: MinioService,
     @Inject(videoConfig.KEY) private appVideoConfig: VideoConfigType,
