@@ -43,6 +43,7 @@ export class VideoProcessor extends WorkerHost {
   @OnWorkerEvent('failed')
   async onFailed(job: Job<VideoProcessingJob>, error: Error): Promise<void> {
     const responseQueue = this.getResponseQueue(job.data.responseQueue);
+    this.logger.log(`Sending failed response for job ${job.id}`);
     /**
      * A job can specify a reserved queue as response queue, which will fail.
      * In that case, we want to skip sending response, since that would mean
