@@ -66,22 +66,33 @@ export class VideoProcessingService {
     /**
      * Encapsulate original video stream and ffmpeg into one controlled stream
      */
-    const hlsOutputStream = new VideoSegmentReadStream(ffmpegProc, workspace, {
-      highWaterMark: this.highWaterMark,
-    });
-    const uploadStream = new VideoSegmentUploadStream(
-      outputVideo.prefix,
-      async (fileName: string, buffer: Buffer) => {
-        await this.minioService.uploadObject(
-          outputVideo.bucket,
-          fileName,
-          buffer,
-        );
-      },
-      { highWaterMark: this.highWaterMark },
-    );
+    return new Promise((resolve, reject) => {
+      /* Chain error handling in case ffmpeg exits */
+      ffmpegProc.on('error', (error: Error) => {
+        this.logger.error(`FFmpeg error: ${error.message}`);
+        reject(error);
+      });
+      const hlsOutputStream = new VideoSegmentReadStream(
+        ffmpegProc,
+        workspace,
+        {
+          highWaterMark: this.highWaterMark,
+        },
+      );
+      const uploadStream = new VideoSegmentUploadStream(
+        outputVideo.prefix,
+        async (fileName: string, buffer: Buffer) => {
+          await this.minioService.uploadObject(
+            outputVideo.bucket,
+            fileName,
+            buffer,
+          );
+        },
+        { highWaterMark: this.highWaterMark },
+      );
 
-    await pipeline(hlsOutputStream, uploadStream);
+      pipeline(hlsOutputStream, uploadStream).then(resolve).catch(reject);
+    });
   }
 
   private async getVideoMetadata(
@@ -170,11 +181,6 @@ export class VideoProcessingService {
       '-hls_flags independent_segments',
       '-master_pl_name master-playlist.m3u8',
     ]);
-
-    /* Chain error handling in case ffmpeg exits */
-    ffmpegStream.on('error', error => {
-      this.logger.error(`FFmpeg error: ${error.message}`);
-    });
 
     return ffmpegStream.save(`${workspace}/%v.m3u8`);
   }
