@@ -134,7 +134,7 @@ export class VideoProcessingService {
       ({ height: variantHeight }) => variantHeight <= height!,
     );
 
-    const ffmpegStream = ffmpeg().input(videoUrl);
+    const ffmpegStream = ffmpeg(videoUrl);
 
     /* Map video and audio streams */
     variants.forEach(() =>

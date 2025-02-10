@@ -9,6 +9,7 @@ export function prepareWorkspace(
    * Must use synchronous I/O to ensure each worker gets a unique workspace
    */
   const workspace = resolve(baseDir, workspaceName);
+  console.debug(`Preparing workspace ${workspace}`);
   if (existsSync(workspace)) {
     throw new Error(`Workspace ${workspace} already exists or is invalid`);
   }
