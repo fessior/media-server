@@ -63,6 +63,11 @@ export class VideoProcessingService {
     );
     const ffmpegProc = this.buildFfmpegStream(readStream, metadata, workspace);
 
+    this.logger.debug(
+      // eslint-disable-next-line no-underscore-dangle
+      `Running ffmpeg with command: ${ffmpegProc._getArguments().join(' ')}`,
+    );
+
     /**
      * Encapsulate original video stream and ffmpeg into one controlled stream
      */
