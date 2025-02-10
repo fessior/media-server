@@ -72,8 +72,9 @@ export class VideoProcessingService {
      */
     return new Promise((resolve, reject) => {
       /* Chain error handling in case ffmpeg exits */
-      ffmpegProc.on('error', (error: Error) => {
-        console.error(error);
+      ffmpegProc.on('error', (error: Error, stdout: string, stderr: string) => {
+        this.logger.debug('ffmpeg failed. Process log is show below');
+        this.logger.error(stderr);
         reject(error);
       });
       const hlsOutputStream = new VideoSegmentReadStream(
