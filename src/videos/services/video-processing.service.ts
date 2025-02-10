@@ -73,10 +73,12 @@ export class VideoProcessingService {
         reject(error);
       });
 
-      readdir(workspace)
-        .then(files => {
+      ffmpegProc.on('end', async () => {
+        try {
+          const files = await readdir(workspace);
+
           /* Upload all segments to storage */
-          Promise.all(
+          await Promise.all(
             files.map(async file =>
               // eslint-disable-next-line sonarjs/no-nested-functions
               (async (): Promise<void> => {
@@ -84,6 +86,7 @@ export class VideoProcessingService {
                 this.logger.log(
                   `Uploading ${file} to ${outputVideo.bucket}/${outputVideo.prefix}`,
                 );
+
                 await this.minioService.uploadObject(
                   outputVideo.bucket,
                   `${outputVideo.prefix}/${file}`,
@@ -91,11 +94,12 @@ export class VideoProcessingService {
                 );
               })(),
             ),
-          )
-            .then(() => resolve())
-            .catch(reject);
-        })
-        .catch(reject);
+          );
+          resolve();
+        } catch (error) {
+          reject(error);
+        }
+      });
     });
   }
 
