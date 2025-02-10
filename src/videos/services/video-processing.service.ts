@@ -2,11 +2,11 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { ffprobe, FfprobeData } from 'fluent-ffmpeg';
 import * as ffmpeg from 'fluent-ffmpeg';
-import { pipeline } from 'stream/promises';
+import { readdir, readFile } from 'fs/promises';
+import path from 'path';
 
 import { HLS_RESOLUTIONS } from '../constants';
 import { VideoProcessingJob } from '../types';
-import { VideoSegmentReadStream, VideoSegmentUploadStream } from '../utils';
 import { videoConfig, VideoConfigType } from '@/common/config';
 import { MinioService } from '@/storage/services';
 
@@ -77,26 +77,30 @@ export class VideoProcessingService {
         this.logger.error(stderr);
         reject(error);
       });
-      const hlsOutputStream = new VideoSegmentReadStream(
-        ffmpegProc,
-        workspace,
-        {
-          highWaterMark: this.highWaterMark,
-        },
-      );
-      const uploadStream = new VideoSegmentUploadStream(
-        outputVideo.prefix,
-        async (fileName: string, buffer: Buffer) => {
-          await this.minioService.uploadObject(
-            outputVideo.bucket,
-            fileName,
-            buffer,
-          );
-        },
-        { highWaterMark: this.highWaterMark },
-      );
 
-      pipeline(hlsOutputStream, uploadStream).then(resolve).catch(reject);
+      readdir(workspace)
+        .then(files => {
+          /* Upload all segments to storage */
+          Promise.all(
+            files.map(async file =>
+              // eslint-disable-next-line sonarjs/no-nested-functions
+              (async (): Promise<void> => {
+                const buffer = await readFile(path.resolve(workspace, file));
+                this.logger.log(
+                  `Uploading ${file} to ${outputVideo.bucket}/${outputVideo.prefix}`,
+                );
+                await this.minioService.uploadObject(
+                  outputVideo.bucket,
+                  `${outputVideo.prefix}/${file}`,
+                  buffer,
+                );
+              })(),
+            ),
+          )
+            .then(() => resolve())
+            .catch(reject);
+        })
+        .catch(reject);
     });
   }
 
