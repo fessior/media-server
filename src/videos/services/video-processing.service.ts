@@ -3,7 +3,7 @@ import { Job } from 'bullmq';
 import { ffprobe, FfprobeData } from 'fluent-ffmpeg';
 import * as ffmpeg from 'fluent-ffmpeg';
 import { readdir, readFile } from 'fs/promises';
-import path from 'path';
+import { resolve as resolvePath } from 'path';
 
 import { HLS_RESOLUTIONS } from '../constants';
 import { VideoProcessingJob } from '../types';
@@ -82,7 +82,7 @@ export class VideoProcessingService {
             files.map(async file =>
               // eslint-disable-next-line sonarjs/no-nested-functions
               (async (): Promise<void> => {
-                const buffer = await readFile(path.resolve(workspace, file));
+                const buffer = await readFile(resolvePath(workspace, file));
                 this.logger.log(
                   `Uploading ${file} to ${outputVideo.bucket}/${outputVideo.prefix}`,
                 );
