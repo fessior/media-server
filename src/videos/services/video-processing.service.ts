@@ -78,23 +78,18 @@ export class VideoProcessingService {
           const files = await readdir(workspace);
 
           /* Upload all segments to storage */
-          await Promise.all(
-            files.map(async file =>
-              // eslint-disable-next-line sonarjs/no-nested-functions
-              (async (): Promise<void> => {
-                const buffer = await readFile(resolvePath(workspace, file));
-                this.logger.log(
-                  `Uploading ${file} to ${outputVideo.bucket}/${outputVideo.prefix}`,
-                );
+          for (const file of files) {
+            const buffer = await readFile(resolvePath(workspace, file));
+            this.logger.log(
+              `Uploading ${file} to ${outputVideo.bucket}/${outputVideo.prefix}`,
+            );
 
-                await this.minioService.uploadObject(
-                  outputVideo.bucket,
-                  `${outputVideo.prefix}/${file}`,
-                  buffer,
-                );
-              })(),
-            ),
-          );
+            await this.minioService.uploadObject(
+              outputVideo.bucket,
+              `${outputVideo.prefix}/${file}`,
+              buffer,
+            );
+          }
           resolve();
         } catch (error) {
           reject(error);

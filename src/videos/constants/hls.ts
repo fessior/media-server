@@ -26,16 +26,4 @@ export const HLS_RESOLUTIONS = [
     fps60Bitrate: '12000k',
     audioBitrate: '192k',
   },
-  {
-    height: 1440,
-    fps30Bitrate: '16000k',
-    fps60Bitrate: '24000k',
-    audioBitrate: '192k',
-  },
-  {
-    height: 2160,
-    fps30Bitrate: '35000k',
-    fps60Bitrate: '53000k',
-    audioBitrate: '192k',
-  },
 ];
