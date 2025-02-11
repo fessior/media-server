@@ -143,7 +143,7 @@ export class VideoProcessingService {
     /* Video and audio encoding */
     ffmpegStream.addOptions([
       '-c:v libx264',
-      '-crf 22',
+      '-crf 26',
       '-c:a aac',
       '-ar 48000',
     ]);
@@ -175,7 +175,7 @@ export class VideoProcessingService {
 
     /* HLS options */
     ffmpegStream.addOptions([
-      '-preset fast',
+      '-preset slow',
       '-hls_list_size 0',
       '-threads 0',
       '-f hls',
