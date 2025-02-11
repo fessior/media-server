@@ -126,8 +126,7 @@ export class VideoProcessingService {
     metadata: FfprobeData,
     workspace: string,
   ): ffmpeg.FfmpegCommand {
-    const { height, r_frame_rate: fps } = metadata.streams[0];
-    const fpsThreshold = 40;
+    const { height } = metadata.streams[0];
 
     const variants = HLS_RESOLUTIONS.filter(
       ({ height: variantHeight }) => variantHeight <= height!,
@@ -150,15 +149,11 @@ export class VideoProcessingService {
 
     /* Filter for each variant */
     variants.forEach(
-      (
-        { height: variantHeight, audioBitrate, fps30Bitrate, fps60Bitrate },
-        index,
-      ) => {
-        const videoBitrate =
-          parseInt(fps!, 10) > fpsThreshold ? fps60Bitrate : fps30Bitrate;
+      ({ height: variantHeight, audioBitrate, maxRate, bufSize }, index) => {
         ffmpegStream.addOptions([
           `-filter:v:${index} scale=w=ceil(oh*a/2)*2:h=${variantHeight}`,
-          `-b:v:${index} ${videoBitrate}`,
+          `-maxrate:v:${index} ${maxRate}`,
+          `-bufsize:v:${index} ${bufSize}`,
           `-b:a:${index} ${audioBitrate}`,
         ]);
       },
