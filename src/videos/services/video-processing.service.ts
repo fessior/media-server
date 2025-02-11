@@ -142,7 +142,7 @@ export class VideoProcessingService {
     /* Video and audio encoding */
     ffmpegStream.addOptions([
       '-c:v libx264',
-      '-crf 26',
+      '-crf 28',
       '-c:a aac',
       '-ar 48000',
     ]);
@@ -174,6 +174,9 @@ export class VideoProcessingService {
       '-hls_list_size 0',
       '-threads 0',
       '-f hls',
+      '-g 50',
+      '-keyint_min 50',
+      '-sc_threshold 40',
       '-hls_playlist_type event',
       '-hls_time 10',
       '-hls_flags independent_segments',

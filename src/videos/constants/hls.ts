@@ -5,33 +5,33 @@ export const HLS_RESOLUTIONS = [
   {
     height: 360,
 
-    maxRate: '1200k',
-    bufSize: '2400k',
+    maxRate: '800k',
+    bufSize: '1600k',
 
-    audioBitrate: '48k',
+    audioBitrate: '32k',
   },
   {
     height: 480,
 
-    maxRate: '2000k',
-    bufSize: '4000k',
+    maxRate: '1500k',
+    bufSize: '3000k',
 
-    audioBitrate: '64k',
+    audioBitrate: '48k',
   },
   {
     height: 720,
 
-    maxRate: '4000k',
-    bufSize: '8000k',
+    maxRate: '3000k',
+    bufSize: '6000k',
 
-    audioBitrate: '80k',
+    audioBitrate: '64k',
   },
   {
     height: 1080,
 
-    maxRate: '8000k',
-    bufSize: '16000k',
+    maxRate: '6000k',
+    bufSize: '12000k',
 
-    audioBitrate: '128k',
+    audioBitrate: '96k',
   },
 ];
