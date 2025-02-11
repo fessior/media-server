@@ -175,7 +175,7 @@ export class VideoProcessingService {
 
     /* HLS options */
     ffmpegStream.addOptions([
-      '-preset slow',
+      '-preset fast',
       '-hls_list_size 0',
       '-threads 0',
       '-f hls',
