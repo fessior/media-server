@@ -148,16 +148,12 @@ export class VideoProcessingService {
     ]);
 
     /* Filter for each variant */
-    variants.forEach(
-      ({ height: variantHeight, audioBitrate, maxRate, bufSize }, index) => {
-        ffmpegStream.addOptions([
-          `-filter:v:${index} scale=w=ceil(oh*a/2)*2:h=${variantHeight}`,
-          `-maxrate:v:${index} ${maxRate}`,
-          `-bufsize:v:${index} ${bufSize}`,
-          `-b:a:${index} ${audioBitrate}`,
-        ]);
-      },
-    );
+    variants.forEach(({ height: variantHeight, audioBitrate }, index) => {
+      ffmpegStream.addOptions([
+        `-filter:v:${index} scale=w=ceil(oh*a/2)*2:h=${variantHeight}`,
+        `-b:a:${index} ${audioBitrate}`,
+      ]);
+    });
 
     /* Give name to each variant */
     const varStreamMap = variants
