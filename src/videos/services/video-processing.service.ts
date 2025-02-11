@@ -142,7 +142,7 @@ export class VideoProcessingService {
     /* Video and audio encoding */
     ffmpegStream.addOptions([
       '-c:v libx264',
-      '-crf 28',
+      '-crf 22',
       '-c:a aac',
       '-ar 48000',
     ]);
