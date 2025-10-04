@@ -60,52 +60,87 @@ export class VideoProcessingService {
       originalVideo.key,
     );
 
-    const ffmpegProc = this.buildFfmpegEmbedVideoStream(
-      videoUrl,
-      metadata,
-      workspace,
-      options?.watermark ?? 'vertical',
-      originalVideo.key,
-    );
+    /**
+     * Generate thumbnail
+     */
+    await this.generateThumbnail(videoUrl, metadata, workspace);
 
-    this.logger.debug(
-      // eslint-disable-next-line no-underscore-dangle
-      `Running ffmpeg with command: ${ffmpegProc._getArguments().join(' ')}`,
+    /*
+     * Get watermark file
+     */
+    const watermarkPath = resolvePath(
+      'public/watermark',
+      `${options?.watermark}.png`,
     );
 
     /**
-     * Return a promise that resolves when ffmpeg processing is done
+     * Embed watermark and upload to storage
      */
-    return new Promise((resolve, reject) => {
-      /* Chain error handling in case ffmpeg exits */
-      ffmpegProc.on('error', (error: Error, stdout: string, stderr: string) => {
-        this.logger.debug('ffmpeg failed. Process log is show below');
-        this.logger.error(stderr);
-        reject(error);
-      });
-
-      ffmpegProc.on('end', async () => {
-        try {
-          const files = await readdir(workspace);
-
-          /* Upload all segments to storage */
-          for (const file of files) {
-            const buffer = await readFile(resolvePath(workspace, file));
-            this.logger.log(
-              `Uploading ${file} to ${outputVideo.bucket}/${outputVideo.prefix}`,
-            );
-
-            await this.minioService.uploadObject(
-              outputVideo.bucket,
-              `${outputVideo.prefix}/${file}`,
-              buffer,
-            );
+    await new Promise<void>((resolve, reject) => {
+      ffmpeg(videoUrl)
+        .input(watermarkPath)
+        .inputOptions(['-loop', '1']) // loop the still image
+        .complexFilter([
+          // scale watermark relative to base, then overlay bottom-right with 5px padding
+          {
+            filter: 'scale2ref',
+            options: 'iw:-1',
+            inputs: ['1:v', '0:v'],
+            outputs: ['wm', 'base'],
+          },
+          {
+            filter: 'overlay',
+            options: { x: 'W-w-5', y: 'H-h-5', format: 'auto' },
+            inputs: ['base', 'wm'],
+            outputs: 'out',
+          },
+        ])
+        .outputOptions([
+          '-map',
+          '0:a?',
+          '-map',
+          '[out]',
+          '-c:v',
+          'libx264',
+          '-preset',
+          'veryfast',
+          '-crf',
+          '26',
+          '-c:a',
+          'aac',
+          '-ar',
+          '48000',
+          '-b:a',
+          '128k',
+          '-movflags',
+          '+faststart',
+          '-shortest',
+        ])
+        .save(`${workspace}/watermarked.mp4`)
+        .on('end', async () => {
+          try {
+            const files = await readdir(workspace);
+            /* Upload thumbnail and watermarked video to storage */
+            for (const file of files) {
+              const buffer = await readFile(resolvePath(workspace, file));
+              await this.minioService.uploadObject(
+                outputVideo.bucket,
+                `${outputVideo.prefix}/${file}`,
+                buffer,
+              );
+            }
+            resolve();
+          } catch (error) {
+            reject(error);
           }
-          resolve();
-        } catch (error) {
+        })
+        .on('error', (error: Error, _: string, stderr: string) => {
+          this.logger.debug(
+            'Generate watermarked video fail. Process log is show below',
+          );
+          this.logger.error(stderr);
           reject(error);
-        }
-      });
+        });
     });
   }
 
@@ -211,57 +246,28 @@ export class VideoProcessingService {
     });
   }
 
-  private buildFfmpegEmbedVideoStream(
+  private async generateThumbnail(
     videoUrl: string,
     metadata: FfprobeData,
     workspace: string,
-    watermarkStyle: string,
-    outputKey: string,
-  ): ffmpeg.FfmpegCommand {
+  ): Promise<void> {
     const { width, height } = metadata.streams[0];
-    const ffmpegStream = ffmpeg(videoUrl);
-
-    /* Video and audio encoding */
-    ffmpegStream.addOptions([
-      '-c:v libx264',
-      '-crf 26',
-      '-c:a aac',
-      '-ar 48000',
-      '-preset veryfast',
-      '-movflags +faststart',
-    ]);
-
-    /* Generate thumbnail */
-    ffmpegStream.addOptions([
-      '-ss 1',
-      `-vf scale=${width}:${height}`,
-      '-frames:v 1',
-      '-f image2',
-    ]);
-
-    /* Save thumbnail */
-    ffmpegStream.save(`${workspace}/${outputKey}_thumbnail.png`);
-
-    /* Generate watermarked video */
-    const watermarkPath = resolvePath(
-      'public/watermark',
-      `${watermarkStyle}.png`,
-    );
-    ffmpegStream.addOptions([
-      `-i ${watermarkPath}`,
-      '-loop 1',
-      '-filter_complex',
-      `[1:v][0:v]scale2ref=iw:-1[wm][base];[base][wm]overlay=W-w-10:H-h-10[out]`,
-      `-map 0:a?`,
-      `-map [out]`,
-      `-s ${width}x${height}`,
-      '-b:v 1500k',
-      '-b:a 128k',
-      '-f mp4',
-    ]);
-
-    /* Save watermarked video */
-    return ffmpegStream.save(`${workspace}/${outputKey}.mp4`);
+    return new Promise<void>((resolve, reject) => {
+      ffmpeg(videoUrl)
+        .seekInput(1) // Get at second 1 to avoid black screen at the second 0
+        .frames(1) // Take screenshot 1 time
+        .videoFilters(`scale=${width}:${height}`)
+        .outputOptions(['-f', 'image2'])
+        .save(`${workspace}/thumbnail.png`)
+        .on('end', () => resolve())
+        .on('error', (error: Error, _: string, stderr: string) => {
+          this.logger.debug(
+            'Generate thumbnail fail. Process log is show below',
+          );
+          this.logger.error(stderr);
+          reject(error);
+        });
+    });
   }
 
   private buildFfmpegStream(
