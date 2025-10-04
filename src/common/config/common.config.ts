@@ -18,6 +18,14 @@ type CommonConfig = {
    * Workspace for processing media files
    */
   mediaWorkdir: string;
+
+  /**
+   * Bull Dashboard Auth
+   */
+  bullBoard: {
+    username: string;
+    password: string;
+  };
 };
 
 export const commonConfig = registerAs('common', () => {
@@ -27,6 +35,10 @@ export const commonConfig = registerAs('common', () => {
     redisHost: process.env.REDIS_HOST || 'localhost',
     redisPort: parseInt(<string>process.env.REDIS_PORT, 10) || 6379,
     mediaWorkdir: <string>process.env.MEDIA_WORKDIR,
+    bullBoard: {
+      username: <string>process.env.BULL_BOARD_USERNAME,
+      password: <string>process.env.BULL_BOARD_PASSWORD,
+    },
   };
 
   const validationSchema = z.object({
@@ -35,6 +47,10 @@ export const commonConfig = registerAs('common', () => {
     redisHost: z.string(),
     redisPort: z.number().int().positive(),
     mediaWorkdir: z.string(),
+    bullBoard: z.object({
+      username: z.string(),
+      password: z.string(),
+    }),
   });
 
   validationSchema.parse(configValues);

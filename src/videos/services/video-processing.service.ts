@@ -23,7 +23,7 @@ export class VideoProcessingService {
     job: Job<VideoProcessingJob>,
     workspace: string,
   ): Promise<void> {
-    const { originalVideo, outputVideo } = job.data;
+    const { originalVideo, outputVideo, options } = job.data;
     const objectExists = await this.minioService.objectExists(
       originalVideo.bucket,
       originalVideo.key,
@@ -64,6 +64,7 @@ export class VideoProcessingService {
       videoUrl,
       metadata,
       workspace,
+      options?.watermark ?? 'vertical',
       originalVideo.key,
     );
 
@@ -214,24 +215,11 @@ export class VideoProcessingService {
     videoUrl: string,
     metadata: FfprobeData,
     workspace: string,
+    watermarkStyle: string,
     outputKey: string,
   ): ffmpeg.FfmpegCommand {
     const { width, height } = metadata.streams[0];
     const ffmpegStream = ffmpeg(videoUrl);
-
-    const watermarkStyle = (): string => {
-      // Default option for a tiktok video is vertical
-      if (!width || !height) {
-        return 'vertical';
-      }
-      if (width > height) {
-        return 'horizontal';
-      }
-      if (height > width) {
-        return 'vertical';
-      }
-      return 'square';
-    };
 
     /* Video and audio encoding */
     ffmpegStream.addOptions([
@@ -257,15 +245,15 @@ export class VideoProcessingService {
     /* Generate watermarked video */
     const watermarkPath = resolvePath(
       'public/watermark',
-      `${watermarkStyle()}.png`,
+      `${watermarkStyle}.png`,
     );
     ffmpegStream.addOptions([
       `-i ${watermarkPath}`,
       '-loop 1',
-      `-filter_complex`,
-      `[0:v][1:v] overlay=W-w-10:H-h-10`,
+      '-filter_complex',
+      `[1:v][0:v]scale2ref=iw:-1[wm][base];[base][wm]overlay=W-w-10:H-h-10[out]`,
       `-map 0:a?`,
-      `-map 0:v`,
+      `-map [out]`,
       `-s ${width}x${height}`,
       '-b:v 1500k',
       '-b:a 128k',
