@@ -2,6 +2,7 @@ import { OnWorkerEvent, Processor, WorkerHost } from '@nestjs/bullmq';
 import { Inject, Logger } from '@nestjs/common';
 import { Job, Queue } from 'bullmq';
 
+import { EMBED_WATERMARK_JOB, TRANSCODE_HLS_JOB } from '../constants/job-name';
 import { VideoProcessingService } from '../services';
 import {
   VideoProcessingJob,
@@ -78,10 +79,22 @@ export class VideoProcessor extends WorkerHost {
         throw new Error('Response queue cannot be same as request queue');
       }
 
-      await this.videoProcessingService.encodeAndUploadHlsStream(
-        job,
-        workspace,
-      );
+      switch (job.name) {
+        case TRANSCODE_HLS_JOB:
+          await this.videoProcessingService.encodeAndUploadHlsStream(
+            job,
+            workspace,
+          );
+          break;
+        case EMBED_WATERMARK_JOB:
+          await this.videoProcessingService.embedAndUploadWatermarkedVideo(
+            job,
+            workspace,
+          );
+          break;
+        default:
+          throw new Error(`Unsupported job name ${job.name}`);
+      }
       const responseQueue = this.getResponseQueue(job.data.responseQueue);
       await responseQueue.add('completed', {
         correlationId: job.data.messageId,

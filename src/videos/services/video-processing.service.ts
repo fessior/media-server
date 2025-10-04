@@ -19,6 +19,95 @@ export class VideoProcessingService {
     @Inject(videoConfig.KEY) private appVideoConfig: VideoConfigType,
   ) {}
 
+  public async embedAndUploadWatermarkedVideo(
+    job: Job<VideoProcessingJob>,
+    workspace: string,
+  ): Promise<void> {
+    const { originalVideo, outputVideo } = job.data;
+    const objectExists = await this.minioService.objectExists(
+      originalVideo.bucket,
+      originalVideo.key,
+    );
+    if (!objectExists) {
+      throw new Error(
+        `Original video ${originalVideo.bucket}/${originalVideo.key} does not exist`,
+      );
+    }
+
+    /**
+     * Check if output bucket exists
+     */
+    const outputBucketExists = await this.minioService.bucketExists(
+      outputVideo.bucket,
+    );
+    if (!outputBucketExists) {
+      throw new Error(`Output bucket ${outputVideo.bucket} does not exist`);
+    }
+
+    /**
+     * Extract video metadata
+     */
+    const metadata = await this.getVideoMetadata(
+      originalVideo.bucket,
+      originalVideo.key,
+    );
+
+    /**
+     * Get download video URL
+     */
+    const videoUrl = await this.minioService.getPresignedDownloadUrl(
+      originalVideo.bucket,
+      originalVideo.key,
+    );
+
+    const ffmpegProc = this.buildFfmpegEmbedVideoStream(
+      videoUrl,
+      metadata,
+      workspace,
+      originalVideo.key,
+    );
+
+    this.logger.debug(
+      // eslint-disable-next-line no-underscore-dangle
+      `Running ffmpeg with command: ${ffmpegProc._getArguments().join(' ')}`,
+    );
+
+    /**
+     * Return a promise that resolves when ffmpeg processing is done
+     */
+    return new Promise((resolve, reject) => {
+      /* Chain error handling in case ffmpeg exits */
+      ffmpegProc.on('error', (error: Error, stdout: string, stderr: string) => {
+        this.logger.debug('ffmpeg failed. Process log is show below');
+        this.logger.error(stderr);
+        reject(error);
+      });
+
+      ffmpegProc.on('end', async () => {
+        try {
+          const files = await readdir(workspace);
+
+          /* Upload all segments to storage */
+          for (const file of files) {
+            const buffer = await readFile(resolvePath(workspace, file));
+            this.logger.log(
+              `Uploading ${file} to ${outputVideo.bucket}/${outputVideo.prefix}`,
+            );
+
+            await this.minioService.uploadObject(
+              outputVideo.bucket,
+              `${outputVideo.prefix}/${file}`,
+              buffer,
+            );
+          }
+          resolve();
+        } catch (error) {
+          reject(error);
+        }
+      });
+    });
+  }
+
   async encodeAndUploadHlsStream(
     job: Job<VideoProcessingJob>,
     workspace: string,
@@ -119,6 +208,72 @@ export class VideoProcessingService {
         }
       });
     });
+  }
+
+  private buildFfmpegEmbedVideoStream(
+    videoUrl: string,
+    metadata: FfprobeData,
+    workspace: string,
+    outputKey: string,
+  ): ffmpeg.FfmpegCommand {
+    const { width, height } = metadata.streams[0];
+    const ffmpegStream = ffmpeg(videoUrl);
+
+    const watermarkStyle = (): string => {
+      // Default option for a tiktok video is vertical
+      if (!width || !height) {
+        return 'vertical';
+      }
+      if (width > height) {
+        return 'horizontal';
+      }
+      if (height > width) {
+        return 'vertical';
+      }
+      return 'square';
+    };
+
+    /* Video and audio encoding */
+    ffmpegStream.addOptions([
+      '-c:v libx264',
+      '-crf 26',
+      '-c:a aac',
+      '-ar 48000',
+      '-preset veryfast',
+      '-movflags +faststart',
+    ]);
+
+    /* Generate thumbnail */
+    ffmpegStream.addOptions([
+      '-ss 1',
+      `-vf scale=${width}:${height}`,
+      '-frames:v 1',
+      '-f image2',
+    ]);
+
+    /* Save thumbnail */
+    ffmpegStream.save(`${workspace}/${outputKey}_thumbnail.png`);
+
+    /* Generate watermarked video */
+    const watermarkPath = resolvePath(
+      'public/watermark',
+      `${watermarkStyle()}.png`,
+    );
+    ffmpegStream.addOptions([
+      `-i ${watermarkPath}`,
+      '-loop 1',
+      `-filter_complex`,
+      `[0:v][1:v] overlay=W-w-10:H-h-10`,
+      `-map 0:a?`,
+      `-map 0:v`,
+      `-s ${width}x${height}`,
+      '-b:v 1500k',
+      '-b:a 128k',
+      '-f mp4',
+    ]);
+
+    /* Save watermarked video */
+    return ffmpegStream.save(`${workspace}/${outputKey}.mp4`);
   }
 
   private buildFfmpegStream(
