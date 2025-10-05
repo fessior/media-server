@@ -16,7 +16,9 @@ export type VideoProcessingJob = {
   /**
    * We'll add more options here as needed
    */
-  // options: {};
+  options?: {
+    watermark: string;
+  };
 };
 
 export const videoProcessingJobSchema = z.object({
@@ -32,6 +34,11 @@ export const videoProcessingJobSchema = z.object({
     bucket: z.string().nonempty(),
     prefix: z.string().nonempty(),
   }),
+  options: z
+    .object({
+      watermark: z.enum(['vertical', 'horizontal', 'square']),
+    })
+    .optional(),
 });
 
 export type VideoProcessingResponse = {

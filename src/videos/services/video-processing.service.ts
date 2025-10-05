@@ -19,6 +19,131 @@ export class VideoProcessingService {
     @Inject(videoConfig.KEY) private appVideoConfig: VideoConfigType,
   ) {}
 
+  public async embedAndUploadWatermarkedVideo(
+    job: Job<VideoProcessingJob>,
+    workspace: string,
+  ): Promise<void> {
+    const { originalVideo, outputVideo, options } = job.data;
+    const objectExists = await this.minioService.objectExists(
+      originalVideo.bucket,
+      originalVideo.key,
+    );
+    if (!objectExists) {
+      throw new Error(
+        `Original video ${originalVideo.bucket}/${originalVideo.key} does not exist`,
+      );
+    }
+
+    /**
+     * Check if output bucket exists
+     */
+    const outputBucketExists = await this.minioService.bucketExists(
+      outputVideo.bucket,
+    );
+    if (!outputBucketExists) {
+      throw new Error(`Output bucket ${outputVideo.bucket} does not exist`);
+    }
+
+    /**
+     * Extract video metadata
+     */
+    const metadata = await this.getVideoMetadata(
+      originalVideo.bucket,
+      originalVideo.key,
+    );
+
+    /**
+     * Get download video URL
+     */
+    const videoUrl = await this.minioService.getPresignedDownloadUrl(
+      originalVideo.bucket,
+      originalVideo.key,
+    );
+
+    /**
+     * Generate thumbnail
+     */
+    await this.generateThumbnail(videoUrl, metadata, workspace);
+
+    /*
+     * Get watermark file
+     */
+    const watermarkPath = resolvePath(
+      'public/watermark',
+      `${options?.watermark}.png`,
+    );
+
+    /**
+     * Embed watermark and upload to storage
+     */
+    await new Promise<void>((resolve, reject) => {
+      ffmpeg(videoUrl)
+        .input(watermarkPath)
+        .inputOptions(['-loop', '1']) // loop the still image
+        .complexFilter([
+          // scale watermark relative to base, then overlay bottom-right with 5px padding
+          {
+            filter: 'scale2ref',
+            options: 'iw:-1',
+            inputs: ['1:v', '0:v'],
+            outputs: ['wm', 'base'],
+          },
+          {
+            filter: 'overlay',
+            options: { x: 'W-w-5', y: 'H-h-5', format: 'auto' },
+            inputs: ['base', 'wm'],
+            outputs: 'out',
+          },
+        ])
+        .outputOptions([
+          '-map',
+          '0:a?',
+          '-map',
+          '[out]',
+          '-c:v',
+          'libx264',
+          '-preset',
+          'veryfast',
+          '-crf',
+          '26',
+          '-c:a',
+          'aac',
+          '-ar',
+          '48000',
+          '-b:a',
+          '128k',
+          '-movflags',
+          '+faststart',
+          '-shortest',
+        ])
+        .save(`${workspace}/watermarked.mp4`)
+        .on('end', async () => {
+          try {
+            const files = await readdir(workspace);
+            /* Upload thumbnail and watermarked video to storage */
+            for (const file of files) {
+              const buffer = await readFile(resolvePath(workspace, file));
+              await this.minioService.uploadObject(
+                outputVideo.bucket,
+                `${outputVideo.prefix}/${file}`,
+                buffer,
+              );
+            }
+            resolve();
+          } catch (error) {
+            reject(error);
+          }
+        })
+        .on('error', (error: Error, _: string, stderr: string) => {
+          this.logger.debug(
+            'Generate watermarked video fail. Process log is show below',
+          );
+          this.logger.error(stderr);
+          reject(error);
+        });
+    });
+  }
+
   async encodeAndUploadHlsStream(
     job: Job<VideoProcessingJob>,
     workspace: string,
@@ -118,6 +243,30 @@ export class VideoProcessingService {
           resolve(metadata);
         }
       });
+    });
+  }
+
+  private async generateThumbnail(
+    videoUrl: string,
+    metadata: FfprobeData,
+    workspace: string,
+  ): Promise<void> {
+    const { width, height } = metadata.streams[0];
+    return new Promise<void>((resolve, reject) => {
+      ffmpeg(videoUrl)
+        .seekInput(1) // Get at second 1 to avoid black screen at the second 0
+        .frames(1) // Take screenshot 1 time
+        .videoFilters(`scale=${width}:${height}`)
+        .outputOptions(['-f', 'image2'])
+        .save(`${workspace}/thumbnail.png`)
+        .on('end', () => resolve())
+        .on('error', (error: Error, _: string, stderr: string) => {
+          this.logger.debug(
+            'Generate thumbnail fail. Process log is show below',
+          );
+          this.logger.error(stderr);
+          reject(error);
+        });
     });
   }
 
