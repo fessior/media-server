@@ -131,6 +131,7 @@ export class VideoProcessingService {
             }
             resolve();
           } catch (error) {
+            this.logger.error(error.message);
             reject(error);
           }
         })
