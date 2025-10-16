@@ -1,4 +1,4 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { ffprobe, FfprobeData } from 'fluent-ffmpeg';
 import * as ffmpeg from 'fluent-ffmpeg';
@@ -7,17 +7,13 @@ import { resolve as resolvePath } from 'path';
 
 import { HLS_RESOLUTIONS } from '../constants';
 import { VideoProcessingJob } from '../types';
-import { videoConfig, VideoConfigType } from '@/common/config';
 import { MinioService } from '@/storage/services';
 
 @Injectable()
 export class VideoProcessingService {
   private readonly logger: Logger = new Logger(VideoProcessingService.name);
 
-  constructor(
-    private minioService: MinioService,
-    @Inject(videoConfig.KEY) private appVideoConfig: VideoConfigType,
-  ) {}
+  constructor(private minioService: MinioService) {}
 
   public async embedAndUploadWatermarkedVideo(
     job: Job<VideoProcessingJob>,
@@ -45,25 +41,12 @@ export class VideoProcessingService {
     }
 
     /**
-     * Extract video metadata
-     */
-    const metadata = await this.getVideoMetadata(
-      originalVideo.bucket,
-      originalVideo.key,
-    );
-
-    /**
      * Get download video URL
      */
     const videoUrl = await this.minioService.getPresignedDownloadUrl(
       originalVideo.bucket,
       originalVideo.key,
     );
-
-    /**
-     * Generate thumbnail
-     */
-    await this.generateThumbnail(videoUrl, metadata, workspace);
 
     /*
      * Get watermark file
@@ -123,9 +106,10 @@ export class VideoProcessingService {
             /* Upload thumbnail and watermarked video to storage */
             for (const file of files) {
               const buffer = await readFile(resolvePath(workspace, file));
+              const [fileName] = file.split('.');
               await this.minioService.uploadObject(
                 outputVideo.bucket,
-                `${outputVideo.prefix}/${file}`,
+                `${outputVideo.prefix}/${fileName}`,
                 buffer,
               );
             }
@@ -209,7 +193,6 @@ export class VideoProcessingService {
             this.logger.log(
               `Uploading ${file} to ${outputVideo.bucket}/${outputVideo.prefix}`,
             );
-
             await this.minioService.uploadObject(
               outputVideo.bucket,
               `${outputVideo.prefix}/${file}`,
@@ -244,30 +227,6 @@ export class VideoProcessingService {
           resolve(metadata);
         }
       });
-    });
-  }
-
-  private async generateThumbnail(
-    videoUrl: string,
-    metadata: FfprobeData,
-    workspace: string,
-  ): Promise<void> {
-    const { width, height } = metadata.streams[0];
-    return new Promise<void>((resolve, reject) => {
-      ffmpeg(videoUrl)
-        .seekInput(1) // Get at second 1 to avoid black screen at the second 0
-        .frames(1) // Take screenshot 1 time
-        .videoFilters(`scale=${width}:${height}`)
-        .outputOptions(['-f', 'image2'])
-        .save(`${workspace}/thumbnail.png`)
-        .on('end', () => resolve())
-        .on('error', (error: Error, _: string, stderr: string) => {
-          this.logger.debug(
-            'Generate thumbnail fail. Process log is show below',
-          );
-          this.logger.error(stderr);
-          reject(error);
-        });
     });
   }
 
