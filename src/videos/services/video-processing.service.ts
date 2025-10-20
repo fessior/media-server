@@ -100,7 +100,7 @@ export class VideoProcessingService {
           '+faststart',
           '-shortest',
         ])
-        .save(`${workspace}/watermarked.webm`)
+        .save(`${workspace}/watermarked.mp4`)
         .on('end', async () => {
           try {
             const files = await readdir(workspace);
