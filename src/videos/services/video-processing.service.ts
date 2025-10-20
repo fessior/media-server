@@ -108,12 +108,14 @@ export class VideoProcessingService {
             for (const file of files) {
               const filePath = resolvePath(workspace, file);
               const stream = createReadStream(filePath);
+              this.logger.log(`Read stream from ${file} complete`);
               const [fileName] = file.split('.');
               await this.minioService.uploadObject(
                 outputVideo.bucket,
                 `${outputVideo.prefix}/${fileName}`,
                 stream,
               );
+              this.logger.log(`Upload ${file} complete`);
             }
             resolve();
           } catch (error) {
