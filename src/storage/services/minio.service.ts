@@ -30,7 +30,7 @@ export class MinioService {
   public async uploadObject(
     bucketName: string,
     objectName: string,
-    file: Buffer,
+    file: Buffer | Readable,
   ): Promise<UploadedObjectInfo> {
     if (!this.minioClient) {
       throw new InternalServerErrorException('Minio client not initialized');

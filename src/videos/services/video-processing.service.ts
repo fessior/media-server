@@ -3,6 +3,7 @@ import { Job } from 'bullmq';
 import { ffprobe, FfprobeData } from 'fluent-ffmpeg';
 import * as ffmpeg from 'fluent-ffmpeg';
 import { readdir, readFile } from 'fs/promises';
+import { createReadStream } from 'node:fs';
 import { resolve as resolvePath } from 'path';
 
 import { HLS_RESOLUTIONS } from '../constants';
@@ -99,18 +100,19 @@ export class VideoProcessingService {
           '+faststart',
           '-shortest',
         ])
-        .save(`${workspace}/watermarked.mp4`)
+        .save(`${workspace}/watermarked.webm`)
         .on('end', async () => {
           try {
             const files = await readdir(workspace);
             /* Upload thumbnail and watermarked video to storage */
             for (const file of files) {
-              const buffer = await readFile(resolvePath(workspace, file));
+              const filePath = resolvePath(workspace, file);
+              const stream = createReadStream(filePath);
               const [fileName] = file.split('.');
               await this.minioService.uploadObject(
                 outputVideo.bucket,
                 `${outputVideo.prefix}/${fileName}`,
-                buffer,
+                stream,
               );
             }
             resolve();
