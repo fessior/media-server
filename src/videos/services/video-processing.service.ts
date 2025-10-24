@@ -3,7 +3,6 @@ import { Job } from 'bullmq';
 import { ffprobe, FfprobeData } from 'fluent-ffmpeg';
 import * as ffmpeg from 'fluent-ffmpeg';
 import { readdir, readFile } from 'fs/promises';
-import { createReadStream } from 'node:fs';
 import { resolve as resolvePath } from 'path';
 
 import { HLS_RESOLUTIONS } from '../constants';
@@ -63,7 +62,6 @@ export class VideoProcessingService {
     await new Promise<void>((resolve, reject) => {
       ffmpeg(videoUrl)
         .input(watermarkPath)
-        .inputOptions(['-loop', '1']) // loop the still image
         .complexFilter([
           // scale watermark relative to base, then overlay bottom-right with 5px padding
           {
@@ -106,14 +104,15 @@ export class VideoProcessingService {
             const files = await readdir(workspace);
             /* Upload thumbnail and watermarked video to storage */
             for (const file of files) {
-              const filePath = resolvePath(workspace, file);
-              const stream = createReadStream(filePath);
-              this.logger.log(`Read stream from ${file} complete`);
+              const buffer = await readFile(resolvePath(workspace, file));
+              this.logger.log(
+                `Uploading ${file} to ${outputVideo.bucket}/${outputVideo.prefix}`,
+              );
               const [fileName] = file.split('.');
               await this.minioService.uploadObject(
                 outputVideo.bucket,
                 `${outputVideo.prefix}/${fileName}`,
-                stream,
+                buffer,
               );
               this.logger.log(`Upload ${file} complete`);
             }
@@ -129,6 +128,9 @@ export class VideoProcessingService {
           );
           this.logger.error(stderr);
           reject(error);
+        })
+        .on('start', () => {
+          this.logger.log('▶ FFmpeg started');
         });
     });
   }
